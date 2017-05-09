@@ -1,0 +1,724 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<title>Postgre(No)SQL - A JSON journey / Torino Coding Society / 9th May 2017</title>
+
+		<link rel="stylesheet" href="css/reveal.css">
+		<link rel="stylesheet" href="css/theme/solarized.css">
+
+		<!-- Theme used for syntax highlighting of code -->
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+		<link rel="stylesheet" href="plugin/font-awesome/css/font-awesome.css">
+
+		<!-- Printing and PDF exports -->
+		<script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script>
+		<style>
+			.reveal blockquote {
+				box-shadow: none;
+				width: 100%;
+				font-size: .8em;
+				text-align: justify;
+			}
+			.reveal blockquote.compact {
+				font-size: .6em;
+				margin: 0;
+				padding: 0;
+			}
+			.reveal blockquote em {
+				font-weight: bolder;
+				background-color: #e3eafd;
+			}
+			.reveal blockquote p:first-child {
+				display: block;
+			}
+			.reveal blockquote footer {
+				font-size: 1em;
+				margin-top: 40px;
+				text-align: right;
+			}
+			.reveal blockquote.compact footer {
+				margin: 0;
+			}
+			.reveal blockquote footer small {
+				display: block;
+			}
+			.reveal footer {
+				font-size: .5em;
+			}
+			.reveal footer p {
+				font-size: .5em;
+			}
+			.reveal i.fa {
+				font-family: 'FontAwesome';
+				font-style: normal;
+				margin-right: 5px;
+			}
+			.reveal p.important {
+				background-color: #e3eafd;
+				font-size: .7em;
+				padding: 5px;
+			}
+			.reveal p.important em {
+				font-style: normal;
+				font-weight: bold;
+			}
+			.reveal pre code {
+				width: 100%;
+				font-size: .9em;
+				border: 0;
+				margin: 0;
+				padding: 5px;
+			}
+			.reveal table.table-compact {
+				font-size: .7em;
+			}
+			.reveal table.table-compact [rowspan] {
+				vertical-align: middle;
+			}
+			.reveal table.table-compact [colspan] {
+				text-align: center;
+			}
+			.reveal table.table-compact code {
+				font-size: .8em;
+			}
+			.reveal table.table-compact tbody th {
+				font-weight: normal;
+				font-style: italic;
+			}
+			.reveal ul.no-style {
+				list-style: none;
+			}
+			.reveal ul li {
+				line-height: 1.8;
+			}
+			.reveal ul.list-compact {
+				font-size: .6em;
+			}
+			.reveal ul.list-horizontal {
+				list-style-type: none;
+				display: flex;
+				flex-direction: row;
+				justify-content: space-between;
+			}
+			.reveal ul.list-horizontal li {
+				background-color: #e3eafd;
+				padding: 5px 25px;
+			}
+			.reveal .wall p {
+				font-size: 2em;
+				font-weight: bold;
+			}
+			.reveal .wall p.more {
+				font-size: 1em;
+				font-weight: normal;
+			}
+			@media print {
+				.reveal dt {
+					margin-bottom: 10px;
+				}
+				.reveal dd {
+					margin-bottom: 25px;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<div class="reveal">
+			<div class="slides">
+				<section>
+					<img src="img/logo.png" height="400" style="border:none;box-shadow:none" />
+					<h1>Postgre(No)SQL</h1>
+				</section>
+				<section>
+					<h2>Why using JSON</h2>
+					<dl>
+						<dt>Flexible schema (≠ destructured)</dt>
+						<dd>
+							<a href="https://openlibrary.org/developers/dumps" target="_blank">Open Library</a>, 
+							<a href="https://www.mediawiki.org/wiki/Wikibase/DataModel/JSON" target="_blank">Wikidata</a>, 
+							&hellip;
+						</dd>
+						<dt>Data denormalization</dt>
+						<dd>Avoid complex joins and reduce number of queries (e.g. <abbr title="Entity-Attribute-Value">EAV</abbr> model)</dd>
+						<dt>Native JSON documents storage</dt>
+						<dd>JSON responses from REST APIs</dd>
+					</dl>
+				</section>
+				<section>
+					<section>
+						<header>
+							<h2>The Old Way</h2>
+							<p>Before NoSQL and native JSON</p>
+						</header>
+					</section>
+					<section>
+						<h3><abbr title="Entity-Attribute-Value">EAV</abbr> (Entity-Attribute-Value) model</h3>
+						<blockquote>
+							<p>One table contains the entities, another table contains the names of the properties (attributes) and a third table links the entities with their attributes and holds the value. This gives you the flexibility for having <em>different sets of properties</em> [&hellip;].</p>
+							<p>Selecting one or more entities based on 1 attribute value requires 2 <em>joins</em> [&hellip;]. Also, the properties usually are all stored as strings, which results in <em>type casting</em>, both for the result as for the WHERE clause.</p>
+							<p>JSONB has potential for greatly <em>simplifying schema design without sacrificing query performance</em>.</p>
+							<footer>
+								<a target="_blank" href="https://coussej.github.io/2016/01/14/Replacing-EAV-with-JSONB-in-PostgreSQL/" title="Replacing EAV with JSONB in PostgreSQL">Replacing EAV with JSONB in PostgreSQL</a>
+								<small> via <a target="_blank" href="https://en.wikipedia.org/wiki/Entity%E2%80%93attribute%E2%80%93value_model" title="Entity–attribute–value model - Wikipedia">Wikipedia / Entity–attribute–value model</a></small>
+							</footer>
+						</blockquote>
+					</section>
+					<section>
+						<h3>Plain text and client-side mapping</h3>
+						<p class="important">Store JSON data in a text field and process it client-side.</p>
+						<ul style="list-style: none">
+							<li><i class="fa fa-thumbs-o-down" aria-hidden="true"></i> No SQL querying features</li>
+							<li><i class="fa fa-thumbs-o-down" aria-hidden="true"></i> Mapping overhead on client-side</li>
+							<li><i class="fa fa-thumbs-o-down" aria-hidden="true"></i> Multiple client bring duplicated code</li>
+						</ul>
+					</section>
+				</section>
+				<section>
+					<section>
+						<header>
+							<h2>The Modern Way</h2>
+							<p>2013 and beyond</p>
+						</header>
+					</section>
+					<section>
+						<h3>2012-09-10</h3>
+						<p><a target="_blank" href="https://www.postgresql.org/docs/9.2/static/release-9-2.html" title="PostgreSQL 9.2 / Release Notes">PostgreSQL 9.2</a> introduces <code>json</code> data type</p>
+						<ul class="list-compact">
+							<li>
+								Store an exact copy of the input
+								<ul>
+									<li>Preserve order of keys</li>
+									<li>Preserve duplicate key/value pairs</li>
+								</ul>
+							</li>
+							<li>JSON validation (according to <a href="http://rfc7159.net/rfc7159" target="_blank" title="The JavaScript Object Notation (JSON) Data Interchange Format">RFC-7159</a>)</li>
+							<li>
+								JSON-specific functions and operators
+								<ul>
+									<li>Must <em>reparse input</em> on each execution</li>
+									<li>If duplicate key/value pairs are present, only the last value is considered</li>
+								</ul>
+							</li>
+						</ul>
+					</section>
+					<section>
+						<h3>2 years later (2014-12-18)</h3>
+						<p><a target="_blank" href="https://www.postgresql.org/docs/9.4/static/release-9-4.html" title="PostgreSQL 9.4 / Release Notes">PostgreSQL 9.4</a> introduces <code>jsonb</code> data type</p>
+						<ul class="list-compact">
+							<li>
+								Slower to input due to parsing overhead
+								<ul>
+									<li>Does not preserve the order of object keys</li>
+									<li>Does not keep duplicate object keys (in case of duplicate keys, only last value is kept)</li>
+								</ul>
+							</li>
+							<li>Faster to process (no need to reparse input)</li>
+							<li>Support indexing</li>
+							<li>
+								<a href="https://www.postgresql.org/docs/current/static/datatype-json.html#JSON-TYPE-MAPPING-TABLE" target="_blank" title="JSON primitive types and corresponding PostgreSQL types">
+									Use PostgreSQL types to map JSON primitive types
+								</a></li>
+						</ul>
+					</section>
+					<section>
+						<h3>1 year later (2015)</h3>
+						<p>3rd August: <em>MySQL 5.7.8</em> introduces <a target="_blank" href="https://dev.mysql.com/doc/refman/5.7/en/json.html" title="">JSON data type</a></p>
+						<p>14th October: <em>SQLite 3.9.0</em> introduces <a href="https://www.sqlite.org/json1.html" target="_blank" title="">JSON data type</a></p>
+						<footer>
+						</footer>
+					</section>
+				</section>
+				<section>
+					<h2>JSONB operations</h2>
+					<ul class="list-horizontal">
+						<li><a href="#jsonb-select">SELECT</a></li>
+						<li><a href="#jsonb-update">UPDATE</a></li>
+						<li><a href="#jsonb-query">QUERY</a></li>
+					</ul>
+				</section>
+				<section>
+<pre><code class="sql" data-trim>
+CREATE TABLE authors (
+    type character varying,
+    key character varying NOT NULL PRIMARY KEY,
+    revision integer,
+    last_modified timestamp without time zone,
+    json jsonb
+);
+
+CREATE INDEX authors_idx_gin ON authors USING gin (json);
+CREATE INDEX authors_idx_ginp ON authors USING gin (
+    json jsonb_path_ops
+);
+</code></pre>
+				</section>
+				<section>
+<pre><code class="json" data-trim>
+{
+    "key": "/authors/OL2623297A",
+    "name": "Sir Arthur Conan Doyle",
+    "photos": [5541405],
+    "created": {
+        "type": "/type/datetime", "value": "2008-04-29T13:35:46.876380"
+    },
+    "remote_ids": {
+        "wikidata": "Q35610"
+    },
+    "last_modified": {
+        "type": "/type/datetime", "value": "2017-03-31T14:21:52.424685"
+    }
+}
+</code></pre>
+				</section>
+				<section id="jsonb-select">
+					<section>
+						<h3>SELECT</h3>
+						<table class="table-compact">
+							<thead>
+								<tr>
+									<th>SELECT BY <i class="fa fa-chevron-circle-down"></i> \ RESULT TYPE <i class="fa fa-chevron-circle-right"></i></th>
+									<th>jsonb</th>
+									<th>text</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<th>Object key/array index</th>
+									<td>-&gt;</td>
+									<td>-&gt;&gt;</td>
+								</tr>
+								<tr>
+									<th>JSON path</th>
+									<td>#&gt;</td>
+									<td>#&gt;&gt;</td>
+								</tr>
+							</tbody>
+						</table>
+					</section>
+					<section id="jsonb-select-object">
+						<h4>Object key</h4>
+<pre><code class="sql" data-trim>
+SELECT json->'name', json->>'name', -- By object key 
+       json #> '{name}', json #>> '{name}' -- By JSON path
+FROM authors;
+</code></pre>
+<pre><code class="sql" data-trim>
+SELECT json->'remote_ids'->'wikidata',
+       json->'remote_ids'->>'wikidata',
+       json #> '{remote_ids,wikidata}',
+       json #>> '{remote_ids,wikidata}'
+FROM authors;
+</code></pre>
+						<p class="important">If a field doesn't exist, <a title="Null (SQL) - Wikipedia" href="https://en.wikipedia.org/wiki/Null_(SQL)" target="_blank"><code>NULL</code></a> is returned.</p>
+					</section>
+					<section id="jsonb-select-array">
+						<h4>Array element</h4>
+<pre><code class="sql" data-trim>
+-- Positive index (starting from 0)
+SELECT json->'photos'->0, json->'photos'->>0, -- By index
+       json #> '{photos, 0}', json #>> '{photos, 0}' -- By JSON path
+FROM authors;
+</code></pre>
+<pre><code class="sql" data-trim>
+-- Negative indices count from the end of the array
+SELECT json->'photos'->-1, json->'photos'->>-1, -- By index
+       json #> '{photos, -1}', json #>> '{photos, -1}' -- By JSON path
+FROM authors;
+</code></pre>
+						<p class="important">If an array element doesn't exist, <a title="Null (SQL) - Wikipedia" href="https://en.wikipedia.org/wiki/Null_(SQL)" target="_blank"><code>NULL</code></a> is returned.</p>
+					</section>
+				</section>
+				<section id="jsonb-update">
+					<section>
+						<h3>UPDATE</h3>
+						<ul class="no-style">
+							<li><a href="#jsonb-update-concatenate">Concatenate</a></li>
+							<li><a href="#jsonb-update-delete">Delete</a></li>
+							<li><a href="#jsonb-update-strip"><code>jsonb_strip_nulls</code></a></li>
+							<li><a href="#jsonb-update-set"><code>jsonb_set</code></a></li>
+						</ul>
+					</section>
+					<section id="jsonb-update-concatenate">
+						<h4>Concatenate (<code>||</code>)</h4>
+<pre><code class="sql" data-trim>
+-- ARRAY
+SELECT '["EUR", "USD"]'::jsonb || '"GBP"'::jsonb;
+-- '["EUR", "USD", "GBP"]'
+SELECT '["EUR", "USD"]'::jsonb || '{"GBP": "Pound Sterling"}'::jsonb;
+-- '["EUR", "USD", {"GBP": "Pound Sterling"}]'
+SELECT '["EUR", "USD"]'::jsonb || '["GBP", "CAD"]'::jsonb;
+-- '["EUR", "USD", "GBP", "CAD"]'
+</code></pre>
+<pre><code class="sql" data-trim>
+-- OBJECTS
+-- If duplicate keys are found, only last value is kept
+SELECT '{"EUR": "Euro", "USD": "United States Dollar"}'::jsonb || 
+       '{"GBP": "Pound Sterling", "USD": "US Dollar"}'::jsonb;
+-- '{"EUR": "Euro", "GBP": "Pound Sterling", "USD": "US Dollar"}'
+</code></pre>
+					</section>
+					<section id="jsonb-update-delete">
+						<h4>Delete (<code>-</code>, <code>#-</code>)</h4>
+<pre><code class="sql" data-trim>
+-- OBJECT FIELD
+SELECT '{"EUR": "Euro", "USD": "United States Dollar", 
+         "GBP": "Pound Sterling"}'::jsonb - 'USD', -- By key name
+       '{"EUR": "Euro", "USD": "United States Dollar", 
+         "GBP": "Pound Sterling"}'::jsonb #- '{"USD"}'; -- By key path
+-- '{"EUR": "Euro", "GBP": "Pound Sterling"}'
+</code></pre>
+<pre><code class="sql" data-trim>
+-- ARRAY ELEMENT
+SELECT '["EUR", "USD", "GBP"]'::jsonb - 1, -- '["EUR", "GBP"]'
+       '["EUR", "USD", "GBP"]'::jsonb #- '{1}', -- '["EUR", "GBP"]'
+       '["EUR", "USD", "GBP"]'::jsonb - -1, -- '["EUR", "USD"]'
+       '["EUR", "USD", "GBP"]'::jsonb #- '{-1}'; -- '["EUR", "USD"]'
+</code></pre>
+					</section>
+					<section id="jsonb-update-strip">
+						<h4>jsonb_strip_nulls(from_json)</h4>
+<pre><code class="sql" data-trim>
+SELECT jsonb_strip_nulls('{"EUR": "Euro", "GBP": null}'::jsonb);
+-- '{"EUR": "Euro"}'
+</code></pre>
+						<p class="important">Remove object fields with <code>null</code> value.</p>
+<pre><code class="sql" data-trim>
+SELECT jsonb_strip_nulls('["EUR", null, null, "CAD"]'::jsonb);
+-- '["EUR", null, null, "CAD"]'
+</code></pre>
+						<p class="important">Has no effects on arrays with <code>null</code> elements.</p>
+					</section>
+					<section id="jsonb-update-set">
+						<h4>jsonb_set(target, path, new_value[, create_if_missing])</h4>
+<pre><code class="sql" data-trim>
+SELECT jsonb_set(
+    '{"code": "EUR", "name": "Euro", "symbol": null}', '{symbol}', '"€"'
+); -- '{"code": "EUR", "name": "Euro", "symbol": "€"}'
+</code></pre>
+<pre><code class="sql" data-trim>
+SELECT jsonb_set(
+    '{"code": "EUR", "name": "Euro"}', '{symbol}', '"€"'
+); -- '{"code": "EUR", "name": "Euro", "symbol": "€"}'
+SELECT jsonb_set(
+    '{"code": "EUR", "name": "Euro"}', '{symbol}', '"€"', false
+); -- '{"code": "EUR", "name": "Euro"}'
+</code></pre>
+						<p class="important">Update/insert a JSON value at given object path and/or array position.</p>
+					</section>
+				</section>
+				<section id="jsonb-query">
+					<section>
+						<h3>QUERY</h3>
+						<ul class="no-style">
+							<li><a href="#jsonb-query-existence">Existence</a></li>
+							<li><a href="#jsonb-query-containment">Containment</a></li>
+							<li><a href="#jsonb-query-expansion">Expansion</a></li>
+						</ul>
+					</section>
+					<section id="jsonb-query-existence">
+						<h4>Existence (<code>?</code>, <code>?|</code>, <code>?&</code>)</h4>
+<pre><code class="sql" data-trim>
+-- ARRAY ELEMENTS
+SELECT '["EUR", "USD", "GBP"]'::jsonb ? 'EUR'; -- true
+SELECT '["EUR", "USD", "GBP"]'::jsonb ?| ARRAY['EUR', 'CAD']; -- true
+SELECT '["EUR", "USD", "GBP"]'::jsonb ?& ARRAY['EUR', 'CAD']; -- false
+-- Work only with elements on top-level array
+SELECT '["EUR", ["USD", "GBP"]]'::jsonb ? 'USD'; -- false
+</code></pre>
+<pre><code class="sql" data-trim>
+-- OBJECT KEYS
+SELECT '{"EUR": "Euro", "USD": "United States Dollar", "GBP": 
+         "Pound Sterling"}'::jsonb ? 'EUR'; -- true
+SELECT '{"EUR": "Euro", "USD": "United States Dollar", "GBP": 
+         "Pound Sterling"}'::jsonb ?| ARRAY['EUR', 'CAD']; -- true
+SELECT '{"EUR": "Euro", "USD": "United States Dollar", "GBP": 
+         "Pound Sterling"}'::jsonb ?& ARRAY['EUR', 'CAD']; -- false
+-- Work only with keys on top-level object 
+SELECT '{"currencies": {"EUR": "Euro", "USD": "United States Dollar", 
+         "GBP": "Pound Sterling"}}'::jsonb ? 'EUR'; -- false
+</code></pre>
+						<p class="important">Check if a string appears as an object key or array element at the top level.</p>
+					</section>
+					<section id="jsonb-query-containment">
+						<h4>Containment (<code>@&gt;</code>, <code>&lt;@</code>)</h4>
+<pre><code class="sql" data-trim>
+-- PRIMITIVE TYPES
+-- Check absolute equality
+SELECT '"EUR"'::jsonb @> '"EUR"'::jsonb; -- true
+SELECT '"EUR"'::jsonb @> '"GBP"'::jsonb; -- false
+</code></pre>
+<pre><code class="sql" data-trim>
+-- ARRAYS
+-- Order of elements is ignored
+-- Duplicate elements are considered only once 
+SELECT '["EUR", "GBP", "USD"]'::jsonb 
+       @> '["GBP", "EUR", "EUR"]'::jsonb; -- true
+SELECT '["EUR", "GBP", "USD"]'::jsonb @> '"EUR"'::jsonb; -- true
+SELECT '["EUR", "GBP", "USD"]'::jsonb @> '"CAD"'::jsonb; -- false
+</code></pre>
+<pre><code class="sql" data-trim>
+-- OBJECTS
+-- Structure and data contents must both match
+SELECT '{"id": 12345, "name": "Nicola", "surname": "Moretto"}'::jsonb 
+       @> '{"name": "Nicola"}'; -- true
+SELECT '{"id": 12345, "name": "Nicola", "surname": "Moretto"}'::jsonb 
+       @> '{"name": "Francesco"}'; -- false
+</code></pre>
+					</section>
+					<section id="jsonb-query-expansion">
+						<h4>Expansion (Part I: objects)</h4>
+<pre><code class="sql" data-trim>
+-- Return a record for each object field
+SELECT jsonb_object_keys(
+    '{"code": "EUR", "name": "Euro", "symbol": "€"}'::jsonb
+);
+</code></pre>
+<pre><code class="sql" data-trim>
+-- Return a record with 4 columns and values from matching object keys
+SELECT * 
+FROM jsonb_to_record(
+    '{"code":"EUR", "number":478, "name":"Euro", "symbol":"€"}'::jsonb
+) AS r(code text, number int, name text, symbol text);
+</code></pre>
+					</section>
+					<section>
+						<h4>Expansion (Part II: arrays)</h4>
+<pre><code class="sql" data-trim>
+-- Return a record for each array element (as jsonb or text)
+SELECT jsonb_array_elements('["EUR", "GBP", "CAD", "USD"]'::jsonb),
+       jsonb_array_elements_text('["EUR", "GBP", "CAD", "USD"]'::jsonb);
+</code></pre>
+<pre><code class="sql" data-trim>
+-- Return for each object a record with two columns (code and name)
+-- and values from matching object fields
+SELECT *
+FROM jsonb_to_recordset('[
+    {"code": "GBP", "name": "Pound Sterling", "symbol": "£"},
+    {"code": "EUR", "name": "Euro", "symbol": "€"},
+    {"code": "USD", "name": "United States Dollar", "symbol": "$"}
+]'::jsonb) AS c(code text, name text)
+ORDER BY code ASC; -- Sort records by currency ISO code
+</code></pre>
+					</section>
+				</section>
+				<section>
+					<section>
+						<h2>JSONB indexing</h2>
+<pre><code class="sql" data-trim>
+CREATE INDEX ON authors USING GIN (?)
+</code></pre>
+						<table class="table-compact">
+							<thead>
+								<tr>
+									<th rowspan="2">
+										<i class="fa fa-chevron-circle-down"></i> OPERATOR
+									</th>
+									<th colspan="2">
+										<i class="fa fa-chevron-circle-down"></i> TARGET
+									</th>
+								</tr>
+								<tr>
+									<th>Table column</th>
+									<th>Index expression</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<th><a href="#jsonb-indexing-jsonb_ops">jsonb_ops</a></th>
+									<td><code>json</code></td>
+									<td><code>(json->'name')</code></td>
+								</tr>
+								<tr>
+									<th><a href="#jsonb-indexing-jsonb_path_ops">jsonb_path_ops</a></th>
+									<td><code>json jsonb_path_ops</code></td>
+									<td><code>(json->'name') jsonb_path_ops</code></td>
+								</tr>
+							</tbody>
+						</table>
+					</section>
+					<section id="jsonb-indexing-expressions">
+						<h3>Index expressions</h3>
+						<p class="important">Index expression is required if JSONB operator is not applied to table column</p>
+						<blockquote>
+							<p>An index column need not be just a column of the underlying table, but can be a function or scalar expression computed from one or more columns of the table.</p>
+							<footer>
+								<a target="_blank" href="https://www.postgresql.org/docs/9.6/static/indexes-expressional.html" title="PostgreSQL 9.6 documentation: Indexes on Expressions">PostgreSQL 9.6 Documentation / Indexes / Indexes on Expressions</a>
+							</footer>
+						</blockquote>
+					</section>
+					<section id="jsonb-indexing-jsonb_ops">
+						<h3><code>jsonb_ops</code> (default)</h3>
+						<p class="important">Creates an index item for each <em>key</em> and value in the data.</p>
+						<ul class="no-style">
+							<li><i class="fa fa-thumbs-up" aria-hidden="true"></i> Support key-exists (<code>?</code>, <code>?&</code> and <code>?|</code>) and path/value-exists operators (<code>@></code>, <code><@</code>)</li>
+							<li><i class="fa fa-thumbs-o-down" aria-hidden="true"></i> Slower search than <code>jsonb_path_ops</code></li>
+							<li><i class="fa fa-thumbs-o-down" aria-hidden="true"></i> Bigger index than <code>jsonb_path_ops</code> on same data</li>
+						</ul>
+					</section>
+					<section id="jsonb-indexing-jsonb_path_ops">
+						<h3><code>jsonb_path_ops</code></h3>
+						<p class="important">Creates an index entry for each <em>value</em> and the key(s) leading to it.</p>
+						<ul class="no-style">
+							<li><i class="fa fa-thumbs-up" aria-hidden="true"></i> Best for <a href="#jsonb-query-containment">containment queries</a></li>
+							<li><i class="fa fa-thumbs-up" aria-hidden="true"></i> Faster search than <code>jsonb_ops</code></li>
+							<li><i class="fa fa-thumbs-up" aria-hidden="true"></i> Smaller index than <code>jsonb_ops</code> on same data</li>
+							<li><i class="fa fa-thumbs-o-down" aria-hidden="true"></i> Support only path/value-exists operators (<code>@></code>, <code><@</code>)</li>
+							<li><i class="fa fa-thumbs-o-down" aria-hidden="true"></i> No entries for JSON structures without value</li>
+						</ul>
+					</section>
+				</section>
+				<section>
+					<section>
+						<h2>Demo</h2>
+						<p>
+							6.964.927 authors
+						</p>
+						<img src="img/openlibrary_home.png" title="Welcome to Open Library | Open Library" alt="Home page of Open Library website" />
+					</section>
+					<section>
+						<h3>Selecting record</h3>
+<pre><code class="sql" data-trim>
+SELECT * FROM authors
+WHERE key = '/authors/OL2623297A';
+-- Index Scan using PRIMARY KEY on authors
+</code></pre>
+<pre><code class="sql" data-trim>
+SELECT * FROM authors
+WHERE json->>'key' = '/authors/OL2623297A';
+-- Seq Scan on authors
+</code></pre>
+<pre><code class="sql" data-trim>
+SELECT * FROM authors
+WHERE json @> '{"key": "/authors/OL2623297A"}'::jsonb;
+-- Index Scan on authors_idx_ginp
+</code></pre>
+<pre><code class="sql" data-trim>
+SELECT * FROM authors
+WHERE json @> '{"name": "Sir Arthur Conan Doyle"}'::jsonb;
+-- Index Scan on authors_idx_ginp
+</code></pre>
+						<aside class="notes">GIN indices does not support equality operator, so query plan is not affected and takes the long way.</aside>
+					</section>
+					<section>
+						<h3>Counting records</h3>
+<pre><code class="sql" data-trim>
+SELECT COUNT(*) FROM authors
+WHERE json->'remote_ids' ? 'wikidata';
+-- Seq Scan on authors
+</code></pre>
+						<p class="important">Existence operator can only use simple index for top-level keys, <a href="#jsonb-indexing-expressions">remember?</a></p>
+<pre><code class="sql" data-trim>
+-- Create an index targeting the specifc key
+CREATE INDEX authors_idx_gin_remoteids 
+ON authors USING GIN ((json -> 'remote_ids'));
+</code></pre>
+<pre><code class="sql" data-trim>
+SELECT COUNT(*) FROM authors
+WHERE json->'remote_ids' ? 'wikidata';
+-- Index Scan on authors_idx_gin_remoteids
+</code></pre>
+					</section>
+					<section>
+						<h3>Aggregating records</h3>
+<pre><code class="sql" data-trim>
+CREATE INDEX authors_idx_ginp_created
+ON authors USING GIN ((json -> 'created') jsonb_path_ops);
+</code></pre>
+<pre><code class="sql" data-trim>
+-- Number of records added each day of last 2 months
+SELECT (json #>> '{created,value}')::timestamp::date AS day,
+       COUNT(*) AS records
+FROM authors
+WHERE json->'created' @> '{"type": "/type/datetime"}'
+  AND (json #>> '{created,value}')::timestamp 
+      >= (CURRENT_DATE - INTERVAL '2 month')
+GROUP BY 1
+ORDER BY 1 DESC
+-- Bitmap Index Scan on authors_idx_ginp_created
+</code></pre>
+						<p class="important">You can aggregate on an arbitrary date part using <a href="https://www.postgresql.org/docs/current/static/functions-datetime.html#FUNCTIONS-DATETIME-TRUNC"><code>date_trunc</code></a> function</p>
+					</section>
+					<section>
+<pre><code class="sql" data-trim>
+CREATE MATERIALIZED VIEW mv_authors_cts AS
+SELECT key, (json #>> '{created,value}')::timestamp AS ts
+FROM authors
+WHERE json->'created' @> '{"type": "/type/datetime"}'
+WITH DATA;
+CREATE INDEX mv_authors_cts_ts_idx ON mv_authors_cts(ts);
+
+-- Remember to refresh materialized view if source table changes!
+REFRESH MATERIALIZED VIEW mv_authors_cts;
+</code></pre>
+<pre><code class="sql" data-trim>
+SELECT ts::date AS day, COUNT(*) AS records
+FROM mv_authors_cts
+WHERE ts >= (CURRENT_DATE - INTERVAL '2 month')
+GROUP BY 1
+ORDER BY 1 DESC
+-- Bitmap Index Scan on mv_authors_lmts_ts_idx
+</code></pre>
+					</section>
+				</section>
+				<section>
+					<div class="wall">
+						<p>Thank you!</p>
+						<p class="more">Full presentation and curated links on <a href="https://github.com/nicola88/tcs-postgrenosql-talk" target="_blank">GitHub</a></p>
+					</div>
+					<ul style="list-style: none">
+						<li>
+							<a href="https://www.linkedin.com/in/nicola-moretto-22451230" target="_blank">
+								<i class="fa fa-linkedin-square" aria-hidden="true"></i> 
+								Nicola Moretto
+							</a>
+						</li>
+						<li>
+							<a href="mailto:n.moretto@nicolamoretto.eu" target="_blank">
+								<i class="fa fa-envelope-square" aria-hidden="true"></i> 
+								n.moretto@nicolamoretto.eu
+							</a>
+						</li>
+						<li>
+							<a href="https://github.com/nicola88" target="_blank">
+								<i class="fa fa-github-square" aria-hidden="true"></i> 
+								nicola88 (GitHub)
+							</a>
+						</li>
+						<li>
+							<a href="https://bitbucket.org/nicola88/" target="_blank">
+								<i class="fa fa-bitbucket-square" aria-hidden="true"></i> 
+								nicola88 (BitBucket)
+							</a>
+						</li>
+					</ul>
+				</section>
+			</div>
+		</div>
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.js"></script>
+
+		<script>
+			// More info https://github.com/hakimel/reveal.js#configuration
+			Reveal.initialize({
+				history: true,
+				// More info https://github.com/hakimel/reveal.js#dependencies
+				dependencies: [
+					{ src: 'plugin/markdown/marked.js' },
+					{ src: 'plugin/markdown/markdown.js' },
+					{ src: 'plugin/notes/notes.js', async: true },
+					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
+				]
+			});
+		</script>
+	</body>
+</html>
